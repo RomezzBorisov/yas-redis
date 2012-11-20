@@ -12,4 +12,6 @@ case object EmptyBulkReply extends Reply
 
 case class MultibulkReply(replies: Array[Reply]) extends Reply
 
+case object EmptyMultiBulkReply extends Reply
+
 case class SingleLineReply(line: String) extends Reply

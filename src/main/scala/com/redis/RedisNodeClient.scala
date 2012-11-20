@@ -2,7 +2,7 @@ package com.redis
 
 import akka.dispatch.{Promise, ExecutionContext}
 import java.util.concurrent.{Executors, ConcurrentLinkedQueue}
-import protocol.{OutgoingCommand, RedisResponseHandler, Reply}
+import protocol.{BufferAssembler, RedisResponseHandler, Reply}
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
 import org.jboss.netty.bootstrap.ClientBootstrap
 import org.jboss.netty.channel.{Channels, ChannelPipelineFactory}
@@ -36,11 +36,17 @@ class RedisNodeClient(config: ConnectionConfig)(implicit executionContext: Execu
 
   val channel = bootstrap.connect(new InetSocketAddress(config.host, config.port)).getChannel
 
+
+  def submitCommand(name: String, key: String, args: Iterable[String]) =
+    submitCommand(name, Nil, args)
+
   def submitCommand(name: String, keys: Iterable[String], args: Iterable[String]) = {
-    val cmd = OutgoingCommand(name, keys, args.toSeq)
+    val buf = BufferAssembler(name, args.toSeq)
     val promise = Promise[Reply]
-    promiseQueue.add(promise)
-    channel.write(cmd.buffer)
+    channel.synchronized {
+      promiseQueue.add(promise)
+      channel.write(buf)
+    }
     promise
   }
 }

@@ -44,6 +44,7 @@ object Initial extends ReceiveState {
     case BytesNumberLine(-1) => (Some(EmptyBulkReply), Initial)
     case BytesNumberLine(i) => (None, WaitBulkReply(i)(r => (Some(r), Initial)))
     case LinesNumberLine(0) => (Some(MultibulkReply(Array.empty)), Initial)
+    case LinesNumberLine(-1) => (Some(EmptyMultiBulkReply), Initial)
     case LinesNumberLine(nReplies) => (None, WaitMultiBulkReply(nReplies, Nil))
   }
 }

@@ -4,9 +4,7 @@ import org.jboss.netty.buffer.ChannelBuffer
 import java.nio.charset.Charset
 import org.jboss.netty.buffer.ChannelBuffers._
 
-case class OutgoingCommand(name: String, keys: Iterable[String], buffer: ChannelBuffer)
-
-object OutgoingCommand {
+object BufferAssembler {
   private val UTF8 = Charset.forName("UTF-8")
   private val CRLF = copiedBuffer("\r\n", UTF8)
   private val DOLLAR = copiedBuffer("$", UTF8)
@@ -21,7 +19,6 @@ object OutgoingCommand {
     wrappedBuffer(args.map(lineBuffer): _*)
   )
 
-  def apply(name: String): OutgoingCommand = OutgoingCommand(name, Nil, requestBuffer(name, Nil))
-  def apply(name: String, keys: Iterable[String], args: Seq[String]): OutgoingCommand =
-    OutgoingCommand(name, keys, requestBuffer(name, args))
+  def apply(name: String): ChannelBuffer = requestBuffer(name, Nil)
+  def apply(name: String, args: Seq[String]): ChannelBuffer = requestBuffer(name, args)
 }
