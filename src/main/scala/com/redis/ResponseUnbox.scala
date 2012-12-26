@@ -10,6 +10,17 @@ object ResponseUnbox {
     case ErrorReply(msg) => throw new Exception("Error executing redis command: " + msg)
   }
 
+  val UnboxBulk: PartialFunction[Reply, Option[String]] = UnboxError orElse {
+    case EmptyBulkReply => None
+    case BulkReply(s) => Some(s)
+  }
+
+  val UnboxSingleLine: PartialFunction[Reply, String] = UnboxError orElse {
+    case SingleLineReply(s) => s
+  }
+
+
+
   val UnboxIntegral: PartialFunction[Reply, Long] = UnboxError orElse {
     case IntegralReply(i) => i
   }
@@ -18,18 +29,11 @@ object ResponseUnbox {
     case Some(v) => v.toDouble
   }
 
-  val UnboxSingleLine: PartialFunction[Reply, String] = UnboxError orElse {
-    case SingleLineReply(s) => s
-  }
 
   val UnboxStatusAsBoolean: PartialFunction[Reply, Boolean] = UnboxSingleLine andThen(_ == "OK")
 
   val UnboxIntAsBoolean: PartialFunction[Reply, Boolean] = UnboxIntegral.andThen(_ == 1l)
 
-  val UnboxBulk: PartialFunction[Reply, Option[String]] = UnboxError orElse {
-    case EmptyBulkReply => None
-    case BulkReply(s) => Some(s)
-  }
 
   val UnboxMultibulk: PartialFunction[Reply, Option[Iterable[Option[String]]]] = UnboxError orElse {
     case MultibulkReply(replies) =>

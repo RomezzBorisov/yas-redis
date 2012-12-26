@@ -3,7 +3,7 @@ package com.redis
 import akka.dispatch.Future
 import ResponseUnbox._
 
-trait HashCommands {
+trait HashOperations {
   self: RedisClient =>
 
   def hdel(key: String, fields: String*): Future[Long] =
@@ -18,8 +18,11 @@ trait HashCommands {
   def hgetall[T](key: String)(implicit parse: Parse[T]): Future[Option[Map[String,T]]] =
     submitCommand("HGETALL", key, key :: Nil).map(multibulkAsPairMap[T])
 
-  def hincrby(key: String, field: String, v: Long): Future[Long] =
-    submitCommand("HINCRBY", key , key :: field :: v.toString :: Nil).map(UnboxIntegral)
+  def hincrby(key: String, field: String, v: Long): Future[Long] = {
+    val promise = submitCommand("HINCRBY", key , key :: field :: v.toString :: Nil)
+    promise.map(UnboxIntegral)
+  }
+
 
   def hincrbyfloat(key: String, field: String, v: Double): Future[Double] =
     submitCommand("HINCRBYFLOAT", key , key :: field :: v.toString :: Nil).map(UnboxBulkAsDouble)

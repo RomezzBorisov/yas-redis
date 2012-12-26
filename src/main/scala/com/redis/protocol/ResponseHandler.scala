@@ -5,21 +5,18 @@ import java.util.{Queue => JQueue}
 import org.jboss.netty.channel.{MessageEvent, ChannelHandlerContext, SimpleChannelUpstreamHandler}
 import akka.dispatch.Promise
 
-class RedisResponseHandler(replyPromises: JQueue[Promise[Reply]]) extends SimpleChannelUpstreamHandler {
+class RedisResponseHandler(f: Reply => Unit) extends SimpleChannelUpstreamHandler {
   private var state: ReceiveState = Initial
 
   override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent) {
     state.withLine(e.getMessage.asInstanceOf[String]) match {
       case Right((Some(r), newState)) =>
-        Option(replyPromises.poll()) match {
-          case Some(promise) => promise.success(r)
-          case None => throw new IllegalStateException("No result expected - promise queue is empty")
-        }
+        f(r)
         state = newState
       case Right((None, newState)) =>
         state = newState
-      case Left(e) =>
-        throw e
+      case Left(ex) =>
+        throw ex
 
     }
   }

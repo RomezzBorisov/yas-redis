@@ -1,10 +1,14 @@
 package com.redis.protocol
 
-import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
+import org.jboss.netty.channel.{Channel, ChannelHandlerContext}
 import java.nio.charset.Charset
 import org.jboss.netty.buffer.ChannelBuffers._
+import com.redis.RedisCommand
+import org.jboss.netty.buffer.ChannelBuffers
 
-object BufferAssembler {
+
+object CommandEncoder extends OneToOneEncoder {
   private val UTF8 = Charset.forName("UTF-8")
   private val CRLF = copiedBuffer("\r\n", UTF8)
   private val DOLLAR = copiedBuffer("$", UTF8)
@@ -19,6 +23,9 @@ object BufferAssembler {
     wrappedBuffer(args.map(lineBuffer): _*)
   )
 
-  def apply(name: String): ChannelBuffer = requestBuffer(name, Nil)
-  def apply(name: String, args: Seq[String]): ChannelBuffer = requestBuffer(name, args)
+  def encode(ctx: ChannelHandlerContext, channel: Channel, msg: Any) = msg match {
+    case RedisCommand(name, args) => requestBuffer(name, args)
+    case _ => ChannelBuffers.EMPTY_BUFFER
+  }
 }
+
