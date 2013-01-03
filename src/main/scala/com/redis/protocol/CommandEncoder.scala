@@ -4,7 +4,6 @@ import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
 import org.jboss.netty.channel.{Channel, ChannelHandlerContext}
 import java.nio.charset.Charset
 import org.jboss.netty.buffer.ChannelBuffers._
-import com.redis.RedisCommand
 import org.jboss.netty.buffer.ChannelBuffers
 
 

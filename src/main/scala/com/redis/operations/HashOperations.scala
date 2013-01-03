@@ -1,7 +1,8 @@
-package com.redis
+package com.redis.operations
 
 import akka.dispatch.Future
 import ResponseUnbox._
+import com.redis.{Format, Parse, RedisClient}
 
 trait HashOperations {
   self: RedisClient =>

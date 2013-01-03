@@ -2,8 +2,7 @@ package com.redis.connection
 
 import akka.actor.{LoggingFSM, Actor, FSM}
 import org.jboss.netty.channel.{ChannelFuture, ChannelFutureListener, Channel}
-import com.redis.RedisCommand
-import com.redis.protocol.Reply
+import com.redis.protocol.{RedisCommand, Reply}
 import org.jboss.netty.bootstrap.ClientBootstrap
 import akka.dispatch.Promise
 import collection.immutable.Queue

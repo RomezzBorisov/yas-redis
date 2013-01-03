@@ -42,13 +42,10 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
     actor ! msg
   }
 
-  def submitCommand(name: String, keys: Iterable[String], args: Iterable[String]) = {
+  protected def submitCommand(name: String, keys: Iterable[String], args: Seq[String]) = {
     val promise = Promise[Reply]
     notifyActor(SubmitCommand(RedisCommand(name, args.toSeq), promise))
     promise
   }
-
-  def submitCommand(name: String, key: String, args: Iterable[String]) =
-    submitCommand(name, Nil,args)
 }
 
