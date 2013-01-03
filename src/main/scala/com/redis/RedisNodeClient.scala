@@ -1,12 +1,8 @@
 package com.redis
 
-import akka.dispatch.{Future, Promise, ExecutionContext}
+import akka.dispatch.{Promise, ExecutionContext}
 import connection._
-import connection.Connected
-import connection.ReplyReceived
-import java.util.concurrent.ConcurrentLinkedQueue
-import protocol.{CommandEncoder, RedisResponseHandler, Reply}
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
+import protocol._
 import org.jboss.netty.bootstrap.ClientBootstrap
 import org.jboss.netty.channel._
 import org.jboss.netty.handler.codec.frame.DelimiterBasedFrameDecoder
@@ -14,9 +10,9 @@ import org.jboss.netty.buffer.ChannelBuffers
 import java.nio.charset.Charset
 import org.jboss.netty.handler.codec.string.StringDecoder
 import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicReference
 import socket.ClientSocketChannelFactory
 import akka.actor.{Props, ActorSystem}
+import ConnectionStateActor._
 
 class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig)(implicit executionContext: ExecutionContext, actorSystem: ActorSystem) extends RedisClient with RedisOperations {
 
@@ -26,6 +22,8 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
     bs.setPipelineFactory(new ChannelPipelineFactory {
       def getPipeline = {
         Channels.pipeline(
+          new ConnectionHandler(ch => notifyActor(ConnectionEstablished(ch)), ex => notifyActor(ConnectionBroken(ex))),
+          new CommandSentEventHandler(() => notifyActor(CommandSent)),
           new DelimiterBasedFrameDecoder(cfg.maxLineLength, ChannelBuffers.copiedBuffer("\r\n", Charset.forName("UTF-8"))),
           new StringDecoder(Charset.forName("UTF-8")),
           new RedisResponseHandler(r => notifyActor(ReplyReceived(r))),
@@ -46,7 +44,7 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
 
   def submitCommand(name: String, keys: Iterable[String], args: Iterable[String]) = {
     val promise = Promise[Reply]
-    notifyActor(CommandSendAttempt(RedisCommand(name, args.toSeq), promise))
+    notifyActor(SubmitCommand(RedisCommand(name, args.toSeq), promise))
     promise
   }
 

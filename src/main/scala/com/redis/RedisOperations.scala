@@ -1,5 +1,5 @@
 package com.redis
 
-trait RedisOperations extends HashOperations {
+trait RedisOperations extends HashOperations with KeysOperations {
   self: RedisClient =>
 }

@@ -6,12 +6,21 @@ import java.util.concurrent.Executors
 import akka.dispatch.{Future, Await}
 import akka.util.duration._
 import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
+import akka.actor
 
 class SimpleClientTest extends  Specification {
 
   "client" should {
     "work" in {
-      implicit val actorSystem = ActorSystem("test")
+      val myConfig =  ConfigFactory.parseString(
+        """akka.actor.default-dispatcher.executor=thread-pool-executor
+        """.stripMargin)
+      val regularConfig =        ConfigFactory.load()
+      val combined = myConfig.withFallback(regularConfig)
+      val complete =  ConfigFactory.load(combined)
+
+      implicit val actorSystem = actor.ActorSystem("test",complete)
 
       val factory = new NioClientSocketChannelFactory(
         Executors.newCachedThreadPool(),
@@ -20,14 +29,18 @@ class SimpleClientTest extends  Specification {
 
       val client = new RedisNodeClient(factory, new ConnectionConfig())
 
-      for (i <- 1 to 10) {
+      val nIterations = 10
+      val nFutures = 300000
+
+      for (i <- 1 to nIterations) {
         val start = System.currentTimeMillis()
-        val futures = for (j <- 1 to 300000) yield {
+        val futures = for (j <- 1 to nFutures) yield {
+
           client.hincrby(i.toString,j.toString,j)
         }
         Await.result(Future.sequence(futures), intToDurationInt(10).minutes)
         val end = System.currentTimeMillis()
-        println("Processing 30000 commands in " + (end - start))
+        println("Processing " + nFutures +" commands in " + (end - start))
       }
     }
   }
