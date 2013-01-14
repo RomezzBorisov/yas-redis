@@ -2,8 +2,7 @@ package com.redis.protocol
 
 import java.util.{Queue => JQueue}
 
-import org.jboss.netty.channel.{WriteCompletionEvent, MessageEvent, ChannelHandlerContext, SimpleChannelUpstreamHandler}
-import akka.dispatch.Promise
+import org.jboss.netty.channel.{MessageEvent, ChannelHandlerContext, SimpleChannelUpstreamHandler}
 
 class RedisResponseHandler(f: Reply => Unit) extends SimpleChannelUpstreamHandler {
   private var state: ReceiveState = Initial

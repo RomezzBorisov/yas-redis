@@ -22,7 +22,7 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
     bs.setPipelineFactory(new ChannelPipelineFactory {
       def getPipeline = {
         Channels.pipeline(
-          new ConnectionHandler(ch => notifyActor(ConnectionEstablished(ch)), ex => notifyActor(ConnectionBroken(ex))),
+          new ConnectionHandler(ch => notifyActor(ConnectionEstablished(ch)), (ch,ex) => notifyActor(ConnectionBroken(ch,ex))),
           new CommandSentEventHandler(() => notifyActor(CommandSent)),
           new DelimiterBasedFrameDecoder(cfg.maxLineLength, ChannelBuffers.copiedBuffer("\r\n", Charset.forName("UTF-8"))),
           new StringDecoder(Charset.forName("UTF-8")),

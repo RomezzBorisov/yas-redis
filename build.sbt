@@ -14,4 +14,6 @@ libraryDependencies += "org.jboss.netty" % "netty" % "3.2.7.Final"
 
 libraryDependencies += "org.specs2" %% "specs2" % "1.12.1" % "test"
 
-libraryDependencies += "org.mockito" % "mockito-all" % "1.8.4" % "test"
+libraryDependencies += "org.mockito" %  "mockito-core" % "1.9.5-rc1" % "test"
+
+libraryDependencies += "com.typesafe.akka" % "akka-testkit" % "2.0.3" % "test"

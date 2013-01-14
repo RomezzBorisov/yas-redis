@@ -20,7 +20,7 @@ class Format(val format: PartialFunction[Any, String]) {
   def apply(in: Any): String =
     (if (format.isDefinedAt(in)) (format(in)) else (in)) match {
       case s: String => s
-      case d: Double => Format.formatDouble(d, true)
+      case d: Double => Format.formatDouble(d, inclusive = true)
       case x => x.toString
     }
 
@@ -44,6 +44,6 @@ object Parse {
 
 }
 
-class Parse[A](val f: (String) => A) extends Function1[String, A] {
+class Parse[A](val f: (String) => A) extends ((String) => A) {
   def apply(in: String): A = f(in)
 }

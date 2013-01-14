@@ -1,7 +1,7 @@
 package com.redis.connection
 
-import akka.actor.{LoggingFSM, Actor, FSM}
-import org.jboss.netty.channel.{ChannelFuture, ChannelFutureListener, Channel}
+import akka.actor.{LoggingFSM, Actor}
+import org.jboss.netty.channel.Channel
 import com.redis.protocol.{RedisCommand, Reply}
 import org.jboss.netty.bootstrap.ClientBootstrap
 import akka.dispatch.Promise
@@ -38,7 +38,7 @@ object ConnectionStateActor {
 
   case class ConnectionEstablished(channel: Channel) extends ConnectionMessage
 
-  case class ConnectionBroken(ex: Throwable) extends ConnectionMessage
+  case class ConnectionBroken(channel: Channel,ex: Throwable) extends ConnectionMessage
 
   sealed trait ConnectionState
 
@@ -94,9 +94,7 @@ object ConnectionStateActor {
     def apply(expectedResubmits: Long): MessageAccumulator = MessageAccumulator(Queue.empty, Queue.empty, expectedResubmits)
   }
 
-  case class FastReconnectingData(acc: MessageAccumulator) extends StateData {
-    override def toString = "FastReconnectingData"
-  }
+  case class FastReconnectingData(brokenChannelOpt: Option[Channel], acc: MessageAccumulator) extends StateData
 
   case class ConnectedWaitingResubmitsData(channel: Channel, acc: MessageAccumulator) extends StateData
 
@@ -113,26 +111,26 @@ import ConnectionStateActor._
 
 class ConnectionStateActor(bootstrap: ClientBootstrap) extends Actor with LoggingFSM[ConnectionState, StateData] {
 
-  startWith(FastReconnecting, FastReconnectingData(MessageAccumulator(0l)))
+  startWith(FastReconnecting, FastReconnectingData(None, MessageAccumulator(0l)))
 
   when(FastReconnecting) {
-    case Event(cmd: SubmitCommand, FastReconnectingData(acc)) =>
-      stay() using FastReconnectingData(acc.submitted(cmd))
+    case Event(cmd: SubmitCommand, FastReconnectingData(chOpt, acc)) =>
+      stay() using FastReconnectingData(chOpt, acc.submitted(cmd))
 
-    case Event(cmd: ResubmitCommand, FastReconnectingData(acc)) =>
-      stay() using FastReconnectingData(acc.resubmitted(cmd))
+    case Event(cmd: ResubmitCommand, FastReconnectingData(chOpt, acc)) =>
+      stay() using FastReconnectingData(chOpt, acc.resubmitted(cmd))
 
-    case Event(ConnectionEstablished(channel), FastReconnectingData(acc)) if acc.expectsMoreResubmits =>
+    case Event(ConnectionEstablished(channel), FastReconnectingData(_, acc)) if acc.expectsMoreResubmits =>
       goto(ConnectedWaitingResubmits) using ConnectedWaitingResubmitsData(channel, acc)
 
-    case Event(ConnectionEstablished(channel), FastReconnectingData(acc)) =>
+    case Event(ConnectionEstablished(channel), FastReconnectingData(_, acc)) =>
       goto(Processing) using ProcessingData(channel, acc.sendAll(channel), Queue.empty, acc.size)
 
-    case Event(ConnectionBroken(ex), FastReconnectingData(acc)) if acc.expectsMoreResubmits =>
+    case Event(ConnectionBroken(ch, ex), FastReconnectingData(chOpt, acc)) if chOpt.forall(_ != ch) && acc.expectsMoreResubmits =>
       acc.failAll(ex)
       goto(ConnectionFailedWaitingResubmits) using ConnectionFailedWaitingResubmitsData(ex, acc.resubmitsRemaining)
 
-    case Event(ConnectionBroken(ex), FastReconnectingData(acc)) =>
+    case Event(ConnectionBroken(ch, ex), FastReconnectingData(chOpt, acc)) if chOpt.forall(_ != ch) =>
       acc.failAll(ex)
       bootstrap.connect()
       goto(Connecting) using Nothing
@@ -171,32 +169,35 @@ class ConnectionStateActor(bootstrap: ClientBootstrap) extends Actor with Loggin
         stay() using ProcessingData(ch, pendingReplies.enqueue(replyPromise), resubmits, n + 1)
       else
         stay() using data
+
     case Event(cmd: ResubmitCommand, ProcessingData(ch, pendingReplies, resubmits, n)) =>
       stay() using ProcessingData(ch, pendingReplies, resubmits.enqueue(cmd), n - 1)
+
     case Event(CommandSent, ProcessingData(ch, pendingReplies, resubmits, n)) =>
       stay() using ProcessingData(ch, pendingReplies, resubmits, n - 1)
+
     case Event(ReplyReceived(r), ProcessingData(ch, pendingReplies, resubmits, n)) =>
       val (replyHandler, soFar) = pendingReplies.dequeue
       replyHandler.success(r)
       stay() using ProcessingData(ch, soFar, resubmits, n)
-    case Event(ConnectionBroken(_), ProcessingData(ch, pendingReplies, resubmits, n)) =>
-      bootstrap.connect().addListener(new ChannelFutureListener {
-        def operationComplete(future: ChannelFuture) {
-          println("connect operation complete " + future.isSuccess)
-        }
-      })
-      goto(FastReconnecting) using FastReconnectingData(MessageAccumulator(Queue.empty, resubmits, n))
+
+    case Event(ConnectionBroken(brokenChannel, _), ProcessingData(ch, pendingReplies, resubmits, n)) if brokenChannel == ch =>
+      bootstrap.connect()
+      goto(FastReconnecting) using FastReconnectingData(Some(brokenChannel), MessageAccumulator(Queue.empty, resubmits, n))
   }
 
   when(Connecting) {
     case Event(ConnectAttempt, _) =>
       bootstrap.connect()
       stay()
+
     case Event(ConnectionEstablished(ch), _) =>
       goto(Processing) using ProcessingData(ch, Queue.empty, Queue.empty, 0)
-    case Event(ConnectionBroken(ex), _) =>
+
+    case Event(ConnectionBroken(_, ex), _) =>
       context.system.scheduler.scheduleOnce(5 seconds, self, ConnectAttempt)
       stay()
+
     case Event(SubmitCommand(_, handler), _) =>
       handler.failure(new Exception("Disconnected"))
       stay()

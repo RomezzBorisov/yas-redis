@@ -24,8 +24,6 @@ object ResponseUnbox {
     case SingleLineReply(s) => s
   }
 
-
-
   val UnboxIntegral: PartialFunction[Reply, Long] = UnboxError orElse {
     case IntegralReply(i) => i
   }
