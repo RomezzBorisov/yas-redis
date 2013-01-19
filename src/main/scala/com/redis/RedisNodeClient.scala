@@ -47,5 +47,9 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
     notifyActor(SubmitCommand(RedisCommand(name, args.toSeq), promise))
     promise
   }
+
+  def close() = {
+    Option(bootstrap.getPipeline).flatMap(p => Option(p.getChannel)).foreach(_.close())
+  }
 }
 

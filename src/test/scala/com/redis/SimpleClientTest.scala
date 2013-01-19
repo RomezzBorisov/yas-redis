@@ -29,7 +29,7 @@ class SimpleClientTest extends  Specification {
 
       val client = new RedisNodeClient(factory, new ConnectionConfig())
 
-      val nIterations = 10
+      val nIterations = 100
       val nFutures = 300000
 
       for (i <- 1 to nIterations) {

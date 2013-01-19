@@ -48,6 +48,11 @@ object ResponseUnbox {
       None
   }
 
+  val UnboxMultibulkWithNonemptyParts: PartialFunction[Reply, Option[Iterable[String]]] = UnboxMultibulk andThen (_.map(_.map {
+    case Some(s) => s
+    case None => throw new Exception("Unexpected empty part of multibulk")
+  }))
+
   def multibulkAsMap[T](mapKeys: Iterable[String])(implicit parse: Parse[T]): PartialFunction[Reply, Option[Map[String, T]]] =
     UnboxMultibulk andThen {
       case Some(valOpts) => Some(mapKeys.zip(valOpts).foldLeft(Map.empty[String, T]) {
