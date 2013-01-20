@@ -80,7 +80,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
     "stay and keep incoming resubmit in a temp queue" in new env {
       val oldChannel = mock[Channel]
       val channel = mock[Channel]
-      val cmd = RedisCommand("DEL", "key" :: Nil)
+      val cmd = RedisCommand("DEL", Array("key"))
       val promise = mock[Promise[Reply]]
       actorRef.setState(FastReconnecting, FastReconnectingData(Some(oldChannel), MessageAccumulator(1l)))
       actorRef ! ResubmitCommand(cmd, promise)
@@ -92,7 +92,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
     "stay and keep incoming submit in a temp queue" in new env {
       val oldChannel = mock[Channel]
       val channel = mock[Channel]
-      val cmd = RedisCommand("DEL", "key" :: Nil)
+      val cmd = RedisCommand("DEL", Array("key"))
       val promise = mock[Promise[Reply]]
       actorRef.setState(FastReconnecting, FastReconnectingData(Some(oldChannel), MessageAccumulator(1l)))
       actorRef ! SubmitCommand(cmd, promise)
@@ -112,7 +112,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
   "ConnectedWaitingResubmits" should {
     "put submits to temporary queue" in new env {
       val channel = mock[Channel]
-      val cmd = RedisCommand("DEL", "key" :: Nil)
+      val cmd = RedisCommand("DEL", Array("key"))
       val promise = mock[Promise[Reply]]
       actorRef.setState(ConnectedWaitingResubmits, ConnectedWaitingResubmitsData(channel, MessageAccumulator(1l)))
       actorRef ! SubmitCommand(cmd, promise)
@@ -122,7 +122,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
 
     "put resubmits in temprorary queue if not all resubmits got" in new env {
       val channel = mock[Channel]
-      val cmd = RedisCommand("DEL", "key" :: Nil)
+      val cmd = RedisCommand("DEL", Array("key"))
       val promise = mock[Promise[Reply]]
       actorRef.setState(ConnectedWaitingResubmits, ConnectedWaitingResubmitsData(channel, MessageAccumulator(2l)))
       actorRef ! ResubmitCommand(cmd, promise)
@@ -134,11 +134,11 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
     "send resubmits then submits and move to Processing when the last resubmit received" in new env {
 
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
-      val cmd2 = RedisCommand("DEL", "key1" :: Nil)
+      val cmd2 = RedisCommand("DEL", Array("key1"))
       val promise2 = mock[Promise[Reply]]
-      val cmd3 = RedisCommand("DEL", "key2" :: Nil)
+      val cmd3 = RedisCommand("DEL", Array("key2"))
       val promise3 = mock[Promise[Reply]]
 
       actorRef.setState(ConnectedWaitingResubmits, ConnectedWaitingResubmitsData(channel, MessageAccumulator(Queue(SubmitCommand(cmd1, promise1)), Queue(ResubmitCommand(cmd2, promise2)), 1l)))
@@ -150,9 +150,9 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
 
     "ignore disconnects" in new env {
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
-      val cmd2 = RedisCommand("DEL", "key1" :: Nil)
+      val cmd2 = RedisCommand("DEL", Array("key1"))
       val promise2 = mock[Promise[Reply]]
 
 
@@ -169,7 +169,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
 
     "reject submits immediately" in new env {
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
       val ex = new Exception()
 
@@ -184,7 +184,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
 
     "reject resubmits immediately and stay if more resubmits expected" in new env {
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
       val ex = new Exception()
 
@@ -199,7 +199,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
 
     "reject the last expected resubmit and move to Connecting" in new env {
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
       val ex = new Exception()
 
@@ -218,7 +218,7 @@ class ConnectionStateActorSpec extends TestKit(ActorSystem("test")) with Specifi
   "Connecting" should {
     "reject any submitted command" in new env {
       val channel = mock[Channel]
-      val cmd1 = RedisCommand("DEL", "key" :: Nil)
+      val cmd1 = RedisCommand("DEL", Array("key"))
       val promise1 = mock[Promise[Reply]]
 
       actorRef.setState(Connecting, Nothing)

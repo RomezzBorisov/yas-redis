@@ -10,46 +10,46 @@ trait KeysOperations {
   self: RedisClient =>
 
   def del(keys: String*): Future[Long] =
-    submitCommand("DEL", keys, keys).map(UnboxIntegral)
+    submitCommand("DEL", keys.toArray).map(UnboxIntegral)
 
   def exists(key: String): Future[Boolean] =
-    submitCommand("EXISTS", key, key :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("EXISTS", key).map(UnboxIntAsBoolean)
 
   def expire(key: String, dur: Duration): Future[Boolean] =
-    submitCommand("EXPIRE", key, key :: dur.toSeconds.toString :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("EXPIRE", key, Array(key, dur.toSeconds.toString)).map(UnboxIntAsBoolean)
 
   def expireAt(key: String, datetime: Date): Future[Boolean] =
     expireAt(key, datetime.getTime)
 
   def expireAt(key: String, timestampSeconds: Long): Future[Boolean] =
-    submitCommand("EXPIREAT", key, key :: timestampSeconds.toString :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("EXPIREAT", key, Array(key, timestampSeconds.toString)).map(UnboxIntAsBoolean)
 
   def persist(key: String): Future[Boolean] =
-    submitCommand("PERSIST", key, key :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("PERSIST", key).map(UnboxIntAsBoolean)
 
   def pexpire(key: String, dur: Duration): Future[Boolean] =
-    submitCommand("EXPIRE", key, key :: dur.toMillis.toString :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("EXPIRE", key, Array(key , dur.toMillis.toString)).map(UnboxIntAsBoolean)
 
   def pexpireAt(key: String, datetime: Date): Future[Boolean] =
     expireAt(key, datetime.getTime)
 
   def pexpireAt(key: String, timestamp: Long): Future[Boolean] =
-    submitCommand("EXPIREAT", key, key :: timestamp.toString :: Nil).map(UnboxIntAsBoolean)
+    submitCommand("EXPIREAT", key, Array(key , timestamp.toString )).map(UnboxIntAsBoolean)
 
   def pttl(key: String): Future[Long] =
-    submitCommand("PTTL", key, key :: Nil).map(UnboxIntegral)
+    submitCommand("PTTL", key).map(UnboxIntegral)
 
   def rename(from: String, to: String): Future[Boolean] =
-    submitCommand("RENAME", from :: to :: Nil, from :: to :: Nil).map(UnboxStatusAsBoolean)
+    submitCommand("RENAME", Array(from , to)).map(UnboxStatusAsBoolean)
 
   def renamenx(from: String, to: String): Future[Boolean] =
-    submitCommand("RENAMENX", from :: to :: Nil, from :: to :: Nil).map(UnboxStatusAsBoolean)
+    submitCommand("RENAMENX", Array(from , to)).map(UnboxStatusAsBoolean)
 
   def sort[T](key: String, req: SortRequest)(implicit parse: Parse[T]): Future[Option[Seq[T]]] =
-    submitCommand("SORT", req.keys, req.args).map(UnboxMultibulkWithNonemptyParts.andThen(_.map(_.map(parse.apply).toSeq)))
+    submitCommand("SORT", req.keys.toArray, req.args.toArray).map(UnboxMultibulkWithNonemptyParts.andThen(_.map(_.map(parse.apply).toSeq)))
 
   def ttl(key: String): Future[Long] =
-    submitCommand("TTL", key, key :: Nil).map(UnboxIntegral)
+    submitCommand("TTL", key).map(UnboxIntegral)
 
 }
 

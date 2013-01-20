@@ -6,7 +6,6 @@ import java.nio.charset.Charset
 import org.jboss.netty.buffer.ChannelBuffers._
 import org.jboss.netty.buffer.ChannelBuffers
 import io.Source
-import java.nio.{Buffer, HeapByteBuffer, ByteBuffer}
 
 
 object CommandEncoder extends OneToOneEncoder {
