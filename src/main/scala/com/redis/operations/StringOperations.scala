@@ -3,7 +3,7 @@ package com.redis.operations
 import com.redis.{Parse, Format, RedisClient}
 import ResponseUnbox._
 import akka.dispatch.Future
-import OperationUtil._
+import StringArrayUtil._
 
 trait StringOperations {
   self: RedisClient =>

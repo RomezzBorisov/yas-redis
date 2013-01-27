@@ -4,7 +4,7 @@ import akka.dispatch.Future
 import ResponseUnbox._
 import com.redis.{Format, Parse, RedisClient}
 
-import OperationUtil._
+import StringArrayUtil._
 
 trait HashOperations {
   self: RedisClient =>

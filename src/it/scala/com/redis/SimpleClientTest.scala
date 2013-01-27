@@ -5,7 +5,6 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
 import java.util.concurrent.Executors
 import akka.dispatch.{Future, Await}
 import akka.util.duration._
-import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import akka.actor
 

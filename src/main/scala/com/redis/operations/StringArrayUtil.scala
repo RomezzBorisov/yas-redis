@@ -1,6 +1,7 @@
 package com.redis.operations
 
-object OperationUtil {
+object StringArrayUtil {
+  val EmptyStringArray = Array.empty[String]
 
   def toArgsArray(key: String, argsSoFar: Iterable[String]): Array[String] = {
     val arr = new Array[String](argsSoFar.size + 1)
@@ -30,6 +31,7 @@ object OperationUtil {
     }
     arr
   }
+
 
   def toFlatArray(prefix: Array[String], suffix: Iterable[String]): Array[String] = {
     val arr = new Array[String](prefix.length + suffix.size)

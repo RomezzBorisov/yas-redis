@@ -2,8 +2,9 @@ package com.redis
 
 import akka.dispatch.{Promise, ExecutionContext}
 import connection._
+import operations.{ResponseUnbox, StringArrayUtil}
 import protocol._
-import org.jboss.netty.bootstrap.ClientBootstrap
+import org.jboss.netty.bootstrap.{Bootstrap, ClientBootstrap}
 import org.jboss.netty.channel._
 import org.jboss.netty.handler.codec.frame.DelimiterBasedFrameDecoder
 import org.jboss.netty.buffer.ChannelBuffers
@@ -14,19 +15,21 @@ import socket.ClientSocketChannelFactory
 import akka.actor.{Props, ActorSystem}
 import ConnectionStateActor._
 
-class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig)(implicit executionContext: ExecutionContext, actorSystem: ActorSystem) extends RedisClient with RedisOperations {
+class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig)(implicit executionContext: ExecutionContext, actorSystem: ActorSystem) extends RedisClient with RedisDataOperations {
 
-  private val bootstrap = {
+  private val actor = actorSystem.actorOf(Props(new ConnectionStateActor(bootstrap)))
+
+  private lazy val bootstrap: ClientBootstrap = {
     val bs = new ClientBootstrap(factory)
 
     bs.setPipelineFactory(new ChannelPipelineFactory {
       def getPipeline = {
         Channels.pipeline(
-          new ConnectionHandler(ch => notifyActor(ConnectionEstablished(ch)), (ch,ex) => notifyActor(ConnectionBroken(ch,ex))),
-          new CommandSentEventHandler(() => notifyActor(CommandSent)),
+          new ConnectionHandler(ch => actor ! ConnectionEstablished(ch), (ch,ex) => actor ! ConnectionBroken(ch,ex)),
+          new CommandSentEventHandler(() => actor ! CommandSent),
           new DelimiterBasedFrameDecoder(cfg.maxLineLength, ChannelBuffers.copiedBuffer("\r\n", Charset.forName("UTF-8"))),
           new StringDecoder(Charset.forName("UTF-8")),
-          new RedisResponseHandler(r => notifyActor(ReplyReceived(r))),
+          new RedisResponseHandler(r => actor ! ReplyReceived(r)),
           //Downstream
           CommandEncoder)
       }
@@ -36,20 +39,20 @@ class RedisNodeClient(factory: ClientSocketChannelFactory, cfg: ConnectionConfig
     bs
   }
 
-  private val actor = actorSystem.actorOf(Props(new ConnectionStateActor(bootstrap)))
-
-  private def notifyActor(msg: ConnectionMessage) {
-    actor ! msg
-  }
-
   protected def submitCommand(name: String, keys: Array[String], args: Array[String]) = {
     val promise = Promise[Reply]
-    notifyActor(SubmitCommand(RedisCommand(name, args), promise))
+    actor ! SubmitCommand(RedisCommand(name, args), promise)
     promise
   }
 
-  def close() = {
-    Option(bootstrap.getPipeline).flatMap(p => Option(p.getChannel)).foreach(_.close())
+
+  protected def instantError(ex: Exception) =
+    Promise.failed(ex)
+
+  def close() {
+    submitCommand("QUIT", StringArrayUtil.EmptyStringArray, StringArrayUtil.EmptyStringArray).map(ResponseUnbox.UnboxStatusAsBoolean).onSuccess {
+      case _ => actorSystem.stop(actor)
+    }
   }
 }
 

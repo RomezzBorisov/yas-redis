@@ -19,4 +19,14 @@ trait RedisClient {
   protected def submitCommand(name: String, key: String): Future[Reply] =
     submitCommand(name, Array(key))
 
+  protected def failFast(errMsg: => String, precondition: Boolean)(f: => Future[Reply]): Future[Reply] = {
+    if (!precondition) {
+      instantError(new IllegalArgumentException(errMsg))
+    } else {
+      f
+    }
+  }
+
+  protected def instantError(ex: Exception): Future[Reply]
+
 }

@@ -7,6 +7,7 @@ import org.jboss.netty.bootstrap.ClientBootstrap
 import akka.dispatch.Promise
 import collection.immutable.Queue
 import akka.util.duration._
+import com.redis.operations.StringArrayUtil
 
 
 object ConnectionStateActor {
@@ -53,6 +54,9 @@ object ConnectionStateActor {
   case object Connecting extends ConnectionState
 
   sealed trait StateData
+  trait ChannelHolder {
+    def channel: Channel
+  }
 
   case class MessageAccumulator(pendingSubmits: Queue[SubmitCommand],
                                 pendingResubmits: Queue[ResubmitCommand],
@@ -96,11 +100,11 @@ object ConnectionStateActor {
 
   case class FastReconnectingData(brokenChannelOpt: Option[Channel], acc: MessageAccumulator) extends StateData
 
-  case class ConnectedWaitingResubmitsData(channel: Channel, acc: MessageAccumulator) extends StateData
+  case class ConnectedWaitingResubmitsData(channel: Channel, acc: MessageAccumulator) extends StateData with ChannelHolder
 
   case class ConnectionFailedWaitingResubmitsData(ex: Throwable, resubmitsRemaining: Long) extends StateData
 
-  case class ProcessingData(channel: Channel, pendingReplies: Queue[Promise[Reply]], resubmits: Queue[ResubmitCommand], nPendingSends: Long) extends StateData
+  case class ProcessingData(channel: Channel, pendingReplies: Queue[Promise[Reply]], resubmits: Queue[ResubmitCommand], nPendingSends: Long) extends StateData with ChannelHolder
 
   case object Nothing extends StateData
 
@@ -203,8 +207,23 @@ class ConnectionStateActor(bootstrap: ClientBootstrap) extends Actor with Loggin
       stay()
   }
 
+  /*whenUnhandled {
+    case Event(Close, holder: ChannelHolder) =>
+      holder.channel.close()
+      stop(Normal)
+  } */
+
+
+
   override def preStart() {
     super.preStart()
     bootstrap.connect()
+  }
+
+  override def postStop() {
+    this.stateData match {
+      case s: ChannelHolder => s.channel.close()
+    }
+    super.postStop()
   }
 }
