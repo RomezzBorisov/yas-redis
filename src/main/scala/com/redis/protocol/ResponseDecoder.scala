@@ -1,16 +1,16 @@
 package com.redis.protocol
 
-import java.util.{Queue => JQueue}
+import io.netty.channel.ChannelHandlerContext
+import io.netty.handler.codec.MessageToMessageDecoder
+import java.util
 
-import org.jboss.netty.channel.{MessageEvent, ChannelHandlerContext, SimpleChannelUpstreamHandler}
-
-class RedisResponseHandler(f: Reply => Unit) extends SimpleChannelUpstreamHandler {
+class ResponseDecoder extends MessageToMessageDecoder[String] {
   private var state: ReceiveState = Initial
 
-  override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent) {
-    state.withLine(e.getMessage.asInstanceOf[String]) match {
+  def decode(ctx: ChannelHandlerContext, msg: String, out: util.List[AnyRef]) {
+    state.withLine(msg) match {
       case Right((Some(r), newState)) =>
-        f(r)
+        out.add(r)
         state = newState
       case Right((None, newState)) =>
         state = newState
@@ -18,6 +18,7 @@ class RedisResponseHandler(f: Reply => Unit) extends SimpleChannelUpstreamHandle
         throw ex
 
     }
+
   }
 }
 

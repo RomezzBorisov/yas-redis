@@ -2,34 +2,30 @@ package com.redis.operations
 
 import org.specs2.mutable.{After, Specification}
 import org.specs2.specification.Scope
-import akka.actor
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
-import java.util.concurrent.Executors
-import com.redis.{ConnectionConfig, RedisNodeClient}
-import akka.dispatch.{Await, Future}
-import akka.util.duration._
+import java.util.concurrent.{Executors, TimeUnit}
+import com.redis.ConnectionConfig
+import com.redis.connection.RedisNodeClient
+import io.netty.channel.nio.NioEventLoopGroup
+import scala.concurrent.{ExecutionContext, Await, Future}
+import scala.concurrent.duration.Duration
 
 trait RedisEnv {
   self: Specification =>
 
   trait env extends Scope with After {
-    implicit val actorSystem = actor.ActorSystem("test")
+    implicit val ctx = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+    val eventGroup = new NioEventLoopGroup(1)
 
-    val factory = new NioClientSocketChannelFactory(
-      Executors.newCachedThreadPool(),
-      Executors.newCachedThreadPool()
-    )
-
-    val client = new RedisNodeClient(factory, new ConnectionConfig())
+    val client = RedisNodeClient(eventGroup, new ConnectionConfig())
 
     def result[T](fut: Future[T]): T = {
-      Await.result(fut, intToDurationInt(5).seconds)
+      Await.result(fut, Duration(5, TimeUnit.SECONDS))
     }
 
 
     def after = {
       client.close()
-      factory.releaseExternalResources()
+      eventGroup.shutdownGracefully().sync()
     }
   }
 

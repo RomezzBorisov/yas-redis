@@ -1,27 +1,22 @@
 package com.redis
 
 import org.specs2.mutable.Specification
-import akka.actor
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
-import java.util.concurrent.{CyclicBarrier, Executors}
-import akka.dispatch.{Await, Future}
-import akka.util.duration._
+import java.util.concurrent.{Executors, TimeUnit, CyclicBarrier}
+import com.redis.connection.RedisNodeClient
+import io.netty.channel.nio.NioEventLoopGroup
+import scala.concurrent.{ExecutionContext, Await, Future}
+import scala.concurrent.duration.Duration
 
 class ParallelTest extends Specification {
 
   "client" should {
     "handle parallel operations correctly" in {
-      implicit val actorSystem = actor.ActorSystem("test")
 
-      val factory = new NioClientSocketChannelFactory(
-        Executors.newCachedThreadPool(),
-        Executors.newCachedThreadPool()
-      )
+      implicit val ctx = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+      val client = RedisNodeClient(new NioEventLoopGroup(1), new ConnectionConfig())
 
-      val client = new RedisNodeClient(factory, new ConnectionConfig())
-
-      val nThreads = 16
-      val nIterations=1500
+      val nThreads = 2
+      val nIterations=5
       val startBarrier = new CyclicBarrier(nThreads)
 
       val expected = (1 to nIterations).foldLeft(List.empty[Long]) {
@@ -36,7 +31,7 @@ class ParallelTest extends Specification {
           }
 
           val listFut = Future.sequence(futures)
-          val res = Await.result(listFut, intToDurationInt(5).minutes)
+          val res = Await.result(listFut, Duration(5, TimeUnit.MINUTES))
           res.toList must_== expected
         }
       }
