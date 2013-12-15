@@ -19,7 +19,6 @@ class RedisNodeClient(client: NettyClient[RedisCommand, Reply]) extends RedisCli
 
   def close() {
     client.close()
-
   }
 
 }
