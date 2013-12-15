@@ -2,6 +2,7 @@ package io.netty.client
 
 import scala.collection.immutable.Queue
 import ClientState._
+import org.apache.log4j.{SimpleLayout, Layout, ConsoleAppender, Logger}
 
 sealed trait ClientState[C,R] {
 
@@ -33,7 +34,7 @@ object ClientState {
 
 trait EventLogger[C,R] extends ClientState[C,R] {
   private def logCall[T](actualCall: => T, method: String, args: Any*): T = {
-    println(getClass.getSuperclass.getSimpleName + "." + method + ": " + args.map(_.toString.replace("\n","\\n")))
+    EventLogger.log.info(getClass.getSuperclass.getSimpleName + "." + method + ": " + args.map(_.toString.replace("\n","\\n")))
     actualCall
   }
 
@@ -58,6 +59,16 @@ trait EventLogger[C,R] extends ClientState[C,R] {
 
   abstract override def connectionBroken(cause: Throwable, connector: Connector): StateUpdate[C, R] =
     logCall(super.connectionBroken(cause, connector), "connectionBroken", cause)
+}
+
+object EventLogger {
+
+  val log = {
+    val console = new ConsoleAppender(new SimpleLayout())
+    console.activateOptions()
+    Logger.getRootLogger.addAppender(console)
+    Logger.getLogger("event")
+  }
 }
 
 case class WaitingForConnection[C,R](retries: CommandQueue[C,R]) extends ClientState[C,R] {

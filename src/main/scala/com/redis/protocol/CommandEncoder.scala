@@ -7,13 +7,29 @@ import scala.io.Source
 import io.netty.channel.ChannelHandlerContext
 import java.util
 import io.netty.channel.ChannelHandler.Sharable
+import io.netty.util.internal.StringUtil
+import java.nio.ByteBuffer
+import io.netty.buffer.ByteBuf
 
 @Sharable
 object CommandEncoder extends MessageToMessageEncoder[RedisCommand] {
   val UTF8 = Charset.forName("UTF-8")
-  private def CRLF = copiedBuffer("\r\n", UTF8)
-  private def DOLLAR = copiedBuffer("$", UTF8)
-  private def STAR = copiedBuffer("*", UTF8)
+
+  private def extractBytes(buf: ByteBuf) = {
+    val n = buf.readableBytes()
+    val res = new Array[Byte](n)
+    buf.getBytes(buf.readerIndex(), res)
+    res
+  }
+
+  private val CRLF_BYTES = extractBytes(copiedBuffer("\r\n", UTF8))
+  private def CRLF = wrappedBuffer(CRLF_BYTES)
+
+  private val DOLLAR_BYTES = extractBytes(copiedBuffer("$", UTF8))
+  private def DOLLAR = wrappedBuffer(DOLLAR_BYTES)
+
+  private val STAR_BYTES = extractBytes(copiedBuffer("*", UTF8))
+  private def STAR = wrappedBuffer(STAR_BYTES)
 
   private def strBuffer(o: Any) = copiedBuffer(o.toString, UTF8)
   private def lineBuffer(s: String)  = wrappedBuffer(DOLLAR, intToBuffer(s.length), CRLF, strBuffer(s), CRLF)

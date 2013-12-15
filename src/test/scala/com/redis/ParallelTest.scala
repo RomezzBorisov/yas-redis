@@ -15,8 +15,8 @@ class ParallelTest extends Specification {
       implicit val ctx = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
       val client = RedisNodeClient(new NioEventLoopGroup(1), new ConnectionConfig())
 
-      val nThreads = 2
-      val nIterations=5
+      val nThreads = 4
+      val nIterations=5000
       val startBarrier = new CyclicBarrier(nThreads)
 
       val expected = (1 to nIterations).foldLeft(List.empty[Long]) {
