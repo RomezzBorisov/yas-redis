@@ -34,7 +34,7 @@ object ClientState {
 
 trait EventLogger[C,R] extends ClientState[C,R] {
   private def logCall[T](actualCall: => T, method: String, args: Any*): T = {
-    EventLogger.log.info(getClass.getSuperclass.getSimpleName + "." + method + ": " + args.map(_.toString.replace("\n","\\n")))
+    //EventLogger.log.info(getClass.getSuperclass.getSimpleName + "." + method + ": " + args.map(_.toString.replace("\n","\\n")))
     actualCall
   }
 

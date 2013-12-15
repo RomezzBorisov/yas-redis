@@ -7,8 +7,6 @@ import scala.io.Source
 import io.netty.channel.ChannelHandlerContext
 import java.util
 import io.netty.channel.ChannelHandler.Sharable
-import io.netty.util.internal.StringUtil
-import java.nio.ByteBuffer
 import io.netty.buffer.ByteBuf
 
 @Sharable
@@ -34,29 +32,36 @@ object CommandEncoder extends MessageToMessageEncoder[RedisCommand] {
   private def strBuffer(o: Any) = copiedBuffer(o.toString, UTF8)
   private def lineBuffer(s: String)  = wrappedBuffer(DOLLAR, intToBuffer(s.length), CRLF, strBuffer(s), CRLF)
 
-  private val IntBufferCache = (0 to 1024).map(i => strBuffer(i)).toArray
-  private def intToBuffer(i: Int) = //if (i >= 0 && i <= 1024) IntBufferCache(i) else
-     strBuffer(i)
+  private val IntBufferCache = (0 to 1024).map(i => extractBytes(strBuffer(i))).toArray
+  private def intToBuffer(i: Int) = if (i >= 0 && i <= 1024) {
+    wrappedBuffer(IntBufferCache(i))
+  } else {
+    strBuffer(i)
+  }
+
+
 
   private val ArgsSizeBufferCache = (1 to 1024).map { i =>
-    wrappedBuffer(STAR, intToBuffer(i), CRLF)
+    extractBytes(wrappedBuffer(STAR, intToBuffer(i), CRLF))
   }.toArray
-  private def argsSizeToBuffer(n: Int) = //if(n <= 1024) ArgsSizeBufferCache(n - 1) else
+  private def argsSizeToBuffer(n: Int) = if(n <= 1024) {
+    wrappedBuffer(ArgsSizeBufferCache(n - 1))
+  } else {
     wrappedBuffer(STAR, intToBuffer(n), CRLF)
+  }
+
 
   private val CommandNameBufferCache = Source.fromInputStream(getClass.getResourceAsStream("/commands.txt")).getLines().map { cmd =>
-    cmd -> lineBuffer(cmd)
+    cmd -> extractBytes(lineBuffer(cmd))
   }.toMap
-  private def commandNameToBuffer(cmd: String) = //CommandNameBufferCache.getOrElse(cmd, lineBuffer(cmd))
-    lineBuffer(cmd)
 
+  private def commandNameToBuffer(cmd: String) = CommandNameBufferCache.get(cmd).map(wrappedBuffer).getOrElse(lineBuffer(cmd))
 
   private def requestBuffer(name: String, args: Seq[String]) = wrappedBuffer(
     argsSizeToBuffer(args.size + 1),
     commandNameToBuffer(name),
     wrappedBuffer(args.map(lineBuffer): _*)
   )
-
 
   def encode(ctx: ChannelHandlerContext, msg: RedisCommand, out: util.List[AnyRef]) {
     out.add(requestBuffer(msg.name, msg.args))
